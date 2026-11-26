@@ -1,0 +1,127 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TipoObra {
+  Residencial
+  Comercial
+  Industrial
+}
+
+enum FormaEntrega {
+  Impresso
+  WhatsApp
+  Email
+}
+
+enum StatusOrcamento {
+  Rascunho
+  Pendente
+  Enviado
+  Aprovado
+  Aceito
+  Recusado
+}
+
+model Vendedor {
+  idVendedor Int         @id @default(autoincrement()) @map("id_vendedor")
+  nome       String      @db.VarChar(100)
+  ativo      Boolean     @default(true)
+  orcamentos Orcamento[]
+
+  @@map("Vendedor")
+}
+
+model Orcamento {
+  idOrcamento       Int              @id @default(autoincrement()) @map("id_orcamento")
+  numeroOrcamento   String           @unique @map("numero_orcamento") @db.VarChar(32)
+  dataHoraCadastro  DateTime         @default(now()) @map("data_hora_cadastro")
+  dataHoraPdf       DateTime?        @map("data_hora_pdf")
+  nomeCliente       String           @map("nome_cliente") @db.VarChar(100)
+  telefoneCliente   String?          @map("telefone_cliente") @db.VarChar(20)
+  enderecoObra      String?          @map("endereco_obra") @db.VarChar(200)
+  tipoObra          TipoObra         @default(Residencial) @map("tipo_obra")
+  observacoes       String?          @db.Text
+  formaEntrega      FormaEntrega?    @map("forma_entrega")
+  status            StatusOrcamento  @default(Pendente)
+  freteIncluso      Boolean          @default(false) @map("frete_incluso")
+  valorTotal        Decimal?         @map("valor_total") @db.Decimal(10, 2)
+  observacoesEntrega String?         @map("observacoes_entrega") @db.Text
+  idVendedor        Int              @default(1) @map("id_vendedor")
+
+  // Campos JSON preservam o formato completo já usado pelo front-end para histórico/PDF.
+  clienteJson       Json?            @map("cliente_json")
+  parametrosJson    Json?            @map("parametros_json")
+  totalJson         Json?            @map("total_json")
+  calculosJson      Json?            @map("calculos_json")
+
+  vendedor          Vendedor         @relation(fields: [idVendedor], references: [idVendedor])
+  itens             ItemOrcamento[]
+
+  @@index([nomeCliente])
+  @@index([status])
+  @@index([dataHoraCadastro])
+  @@map("Orcamento")
+}
+
+model ItemOrcamento {
+  idItem              Int         @id @default(autoincrement()) @map("id_item")
+  idOrcamento         Int         @map("id_orcamento")
+  descricaoAmbiente   String?     @map("descricao_ambiente") @db.VarChar(100)
+  comprimento         Decimal     @db.Decimal(6, 2)
+  largura             Decimal     @db.Decimal(6, 2)
+  ladoMenor           Decimal?    @map("lado_menor") @db.Decimal(6, 2)
+  irregular           Boolean     @default(false)
+  quantidade          Int         @default(1)
+  sentido             String?     @db.VarChar(40)
+  tipoLaje            String      @map("tipo_laje") @db.VarChar(80)
+  reforco             Boolean     @default(false)
+  qtdVigotas          Int?        @map("qtd_vigotas")
+  qtdLajotas          Int?        @map("qtd_lajotas")
+  qtdCimento          Decimal?    @map("qtd_cimento") @db.Decimal(10, 3)
+  qtdAco              Decimal?    @map("qtd_aco") @db.Decimal(10, 3)
+  valorMateriais      Decimal?    @map("valor_materiais") @db.Decimal(10, 2)
+  valorFrete          Decimal?    @map("valor_frete") @db.Decimal(10, 2)
+  valorSubtotal       Decimal?    @map("valor_subtotal") @db.Decimal(10, 2)
+  observacoesTecnicas String?     @map("observacoes_tecnicas") @db.Text
+  medidasProgressivas Json?       @map("medidas_progressivas")
+
+  orcamento           Orcamento   @relation(fields: [idOrcamento], references: [idOrcamento], onDelete: Cascade)
+
+  @@index([idOrcamento])
+  @@map("ItemOrcamento")
+}
+
+model Parametro {
+  idParametro   Int      @id @default(autoincrement()) @map("id_parametro")
+  material      String   @db.VarChar(120)
+  imagem        String?  @db.Text
+  unidade       String   @default("un") @db.VarChar(20)
+  categoria     String   @default("Padrão") @db.VarChar(80)
+  valorUnitario Decimal  @default(0) @map("valor_unitario") @db.Decimal(10, 2)
+  dataVigencia  DateTime @default(now()) @map("data_vigencia") @db.Date
+  motivo        String?  @db.Text
+  ativo         Boolean  @default(true)
+
+  @@index([ativo])
+  @@index([material])
+  @@map("Parametro")
+}
+
+model ParametroCalculo {
+  idParamCalculo Int      @id @default(autoincrement()) @map("id_param_calculo")
+  tipoParametro  String   @map("tipo_parametro") @db.VarChar(80)
+  tipoLaje       String   @map("tipo_laje") @db.VarChar(80)
+  valor          Decimal  @db.Decimal(10, 4)
+  dataVigencia   DateTime @default(now()) @map("data_vigencia") @db.Date
+  motivo         String?  @db.Text
+  ativo          Boolean  @default(true)
+
+  @@index([ativo, tipoLaje])
+  @@map("ParametroCalculo")
+}
